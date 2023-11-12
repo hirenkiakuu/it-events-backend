@@ -23,5 +23,28 @@ app.get('/', async(req, res) => {
     console.log(params);
 });
 
+app.use(express.json());
+
+
+// posting event добавление ивента в бд
+app.post('/addevent', async(req, res) => {
+    const event = req.body;
+
+    try {
+        const query = `INSERT INTO events 
+        (event_title, event_desc_brief, event_desc_full, event_author, event_date, event_address)
+        VALUES (?, ?, ?, ?, ?, ?)`;
+
+        conn.execute(query, [...Object.values(event)]);
+        
+        console.log('event успешно добавлен');
+    } catch(err) {
+        console.log(err);
+    }
+    
+
+    // console.log(event.title);
+});
+
 
 app.listen(PORT, () => console.log('server is running on port 3000'));
