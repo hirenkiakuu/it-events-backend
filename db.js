@@ -9,9 +9,14 @@ const pool = mysql
     password: process.env.MYSQL_PASSWORD
 });
 
-pool.query('select 1 + 1', (err, rows) => {
-    console.log(err);
-    console.log(rows);
+pool.getConnection((err, connection) => {
+    if (err) {
+        console.log('Error connecting to the database', err);
+    } else {
+        console.log('Succesfully connected to the database');
+        connection.release();
+    }
 });
 
-module.exports = pool;
+
+module.exports = pool.promise();
