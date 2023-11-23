@@ -4,7 +4,7 @@ async function getAllEvents(req, res) {
     try {
         const query = 'SELECT * FROM events';
         const [events] = await db.query(query);
-        res.json({ events });
+        res.status(200).json({ events });
         console.log('Succesfully return all events');
     } catch(err) {
         console.log(err);
@@ -21,8 +21,8 @@ async function addEvent(req, res) {
     }
     try {
         const query = `INSERT INTO events 
-        (event_title, event_desc_brief, event_desc_full, event_author, event_date, event_address)
-        VALUES (?, ?, ?, ?, ?, ?)`;
+        (event_title, event_description, event_organizer_id, event_date, event_address, event_platfrom)
+        VALUES (?, ?, ?, ?, ?, ?, ?)`;
 
         const [result] = await db.execute(query, [...Object.values(event)]);
 

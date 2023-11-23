@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
-const routes = require('./routes');
-const conn = require('./db');
+const authRouter = require('./routes/authRouter');
+const eventsRouter = require('./routes/eventsRouter');
 
 const PORT = 3000;
 
@@ -9,7 +9,9 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-app.use('/', routes);
+
+app.use('/test', authRouter);
+app.use('/', eventsRouter);
 
 
 app.listen(PORT, () => console.log(`server is running on port ${PORT}`));
