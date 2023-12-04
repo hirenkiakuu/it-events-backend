@@ -3,7 +3,26 @@ const db = require('../db');
 class eventsController {
     async getAllEvents(req, res) {
         try {
-            const query = 'SELECT * FROM events';
+            const query = `SELECT
+            e.event_id,
+            e.event_type,
+            e.event_title,
+            e.event_description,
+            e.event_organizer,
+            e.event_startdate,
+            e.event_enddate,
+            e.event_address,
+            e.event_platform,
+            GROUP_CONCAT(c.category_name SEPARATOR '_') AS event_tags
+            FROM
+            events e
+            JOIN
+            eventscategories ec ON e.event_id = ec.event_id
+            JOIN
+            categories c ON ec.category_id = c.category_id
+            GROUP BY
+            e.event_id;                  
+            `;
 
             const [queriedEvents] = await db.query(query);
             
@@ -15,11 +34,33 @@ class eventsController {
         }
     }
 
-    async getEvent(req, res) {
+    async getEventById(req, res) {
         try {
-            const query = 'SELECT * FROM events WHERE event_id=2'
+            const query = `SELECT
+            e.event_id,
+            e.event_type,
+            e.event_title,
+            e.event_description,
+            e.event_organizer,
+            e.event_startdate,
+            e.event_enddate,
+            e.event_address,
+            e.event_platform,
+            GROUP_CONCAT(c.category_name SEPARATOR '_') AS event_tags
+            FROM
+            events e
+            JOIN
+            eventscategories ec ON e.event_id = ec.event_id
+            JOIN
+            categories c ON ec.category_id = c.category_id
+            WHERE
+            e.event_id = ?
+            GROUP BY
+            e.event_id;                  
+            `;
 
-            const [queriedEvent] = await db.query(query);
+            const eventId = req.params.event_id;
+            const [queriedEvent] = await db.query(query, [eventId]);
 
             console.log(queriedEvent);
 
@@ -30,15 +71,41 @@ class eventsController {
         }
     }
     
-    async addEvent(req, res) {
+    async createEvent(req, res) {
         try {
-            const query = `INSERT INTO events 
-            (event_title, event_description, event_organizer_id, event_startdate, event_enddate, event_address, event_platform)
-            VALUES (?, ?, ?, ?, ?, ?, ?)`;
-            
-            const clientEvent = req.body;
+            const eventQuery = `INSERT INTO events 
+            (event_type, event_title, event_description, event_organizer, event_startdate, event_enddate, event_address, event_platform)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
 
-            const [queryResult] = await db.execute(query, [...Object.values(clientEvent)]);
+            // данные могут придти в другом виде
+            const rawEventTags = req.body.event_tags;
+            const eventTags = rawEventTags.split('_');
+            
+            const [queryResult] = await db.execute(eventQuery, [
+                req.body.event_type,
+                req.body.event_title,
+                req.body.event_description,
+                req.body.event_organizer,
+                req.body.event_startdate,
+                req.body.event_enddate,
+                req.body.event_address,
+                req.body.event_platform,
+            ]);
+
+            console.log(queryResult);
+            const lastInsertedId = queryResult.insertId;
+
+            const eventsCategoriesQuery = `INSERT INTO eventscategories (event_id, category_id) VALUES (?, ?)`;
+            const categoriesQuery = 'SELECT category_id FROM categories WHERE category_name=?';
+            
+            for (let eventTag of eventTags) {
+                const [rawTagId] = await db.execute(categoriesQuery, [eventTag]);
+                const tagId = rawTagId[0].category_id;
+
+                const [result] = await db.execute(eventsCategoriesQuery, [lastInsertedId, tagId]);
+            }
+
+            // const [queryResult] = await db.execute(query, []);
 
             res.status(201).json({ message: 'Event added succesfully' });
         } catch(err) {
@@ -50,8 +117,9 @@ class eventsController {
     // валидация event'ов
     isValidEventMiddleware(req, res, next) {
         const requiredFields = [
-            'event_title', 'event_description', 'event_organizer_id', 
-            'event_startdate', 'event_enddate', 'event_address', 'event_platform'
+            'event_type', 'event_title', 'event_description', 
+            'event_organizer', 'event_startdate', 'event_enddate', 
+            'event_address', 'event_platform', 'event_tags'
         ];
 
         const clientEvent = req.body;
@@ -64,6 +132,7 @@ class eventsController {
         console.log('Passed validation');
         next();
     }
+    
 }
 
 module.exports = new eventsController();

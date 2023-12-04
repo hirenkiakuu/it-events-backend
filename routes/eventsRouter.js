@@ -3,7 +3,7 @@ const eventsController = require('../controllers/eventsController');
 // event routing
 
 eventsRouter.get('/events', eventsController.getAllEvents);
-eventsRouter.post('/newevent', eventsController.isValidEventMiddleware, eventsController.addEvent);
-eventsRouter.get('/event', eventsController.getEvent);
+eventsRouter.get('/events/:event_id', eventsController.getEventById);
+eventsRouter.post('/newevent', eventsController.isValidEventMiddleware, eventsController.createEvent);
 
 module.exports = eventsRouter;
