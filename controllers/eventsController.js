@@ -24,7 +24,7 @@ class eventsController {
             e.event_id;                  
             `;
 
-            const [queriedEvents] = await db.query(query);
+            const [queriedEvents] = await db.execute(query);
             
             res.status(200).json(queriedEvents);
             console.log('Succesfully return all events');
@@ -60,7 +60,7 @@ class eventsController {
             `;
 
             const eventId = req.params.event_id;
-            const [queriedEvent] = await db.query(query, [eventId]);
+            const [queriedEvent] = await db.execute(query, [eventId]);
 
             console.log(queriedEvent);
 
@@ -111,6 +111,23 @@ class eventsController {
         } catch(err) {
             console.error('Error adding event', err);
             res.status(500).json({ message: 'Failed to add event' });
+        }
+    }
+
+    async deleteEventById(req, res) {
+        try {
+            const eventId = req.params.event_id;
+            
+            const deleteTagsQuery = 'DELETE FROM eventscategories WHERE event_id=?';
+            await db.execute(deleteTagsQuery, [eventId]);
+
+            const deleteEventQuery = 'DELETE FROM events WHERE event_id=?';
+            await db.execute(deleteEventQuery, [eventId]);
+
+            res.status(204).json({ message: 'Event successfully deleted' });
+        } catch (err) {
+            console.log(err);
+            res.status(500).json({ message: 'Internal server error' });
         }
     }
 
