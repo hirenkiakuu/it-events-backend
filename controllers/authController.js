@@ -1,17 +1,31 @@
 const User = require('../models/User');
 const { validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+
+const generateAccessToken = (id, role) => {
+    const payload = {
+        id, 
+        role
+    };
+
+    return jwt.sign(payload, process.env.MYSECRET_KEY, {expiresIn: '24h'});
+}
 
 class authController {
     async register(req, res) {
         try {
             const errors = validationResult(req);
+
+            console.log(req.body);
+
             if (!errors.isEmpty()) {
                 return res.status(400).json({ message: 'Error while registration', errors });
             }
 
-            const { username, password, role } = req.body;
-   
+            const { email: username, password, userType: role } = req.body;
+            
+
             const [existingUser] = await User.findByUsername(username);
             
             if (existingUser.length) {
@@ -23,18 +37,20 @@ class authController {
             await User.create(username, hashedPassword, role);
 
             res.status(201).json({ message: 'User registered successfully' });
-        } catch (e) {
-            console.error(e);
+        } catch (err) {
+            console.error(err);
             res.status(500).json({ error: 'Internal server error' });
         }
     }
 
     async login(req, res) {
         try {
-            const {username, password} = req.body;
+            console.log(req.body);
+            const { email: username, password, role } = req.body;
+            
             const [user] = await User.findByUsername(username);
             
-            console.log(user);
+            // console.log(user);
 
             if (!user.length) {
                 return res.status(400).json({ message: 'User was not found' });
@@ -46,10 +62,13 @@ class authController {
             if (!isPasswordValid) {
                 return res.status(400).json({ message: 'The password is incorrect' });
             }
-            res.status(200).json({ message: 'Succesfully logged in' });
-        } catch (e) {
-            console.error(e);
-            res.status(500).json( {error: 'Internal server error'} );
+
+            const token = generateAccessToken(user.user_id, user.user_role);
+
+            res.status(200).json({token});
+        } catch (err) {
+            console.error(err);
+            res.status(500).json( {error: 'Internal server error', err} );
         }
     }
 
@@ -59,9 +78,21 @@ class authController {
 
             // res.status(200).json('server is working');
             res.status(200).json(allUsers[0]);
-        } catch (e) {
-            console.error(e);
-            return res.status(500).json({ message: 'Internal server error'} );
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ message: 'Internal server error'} );
+        }
+    }
+
+
+    // тестовое
+    async getUser(req, res) {
+        try {
+            const [user] = await User.findByUsername('user');
+            
+            res.status(200).json(user[0]);
+        } catch (err) {
+            res.status(500).json( {message: 'Internal server error' });
         }
     }
 }
