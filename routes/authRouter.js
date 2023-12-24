@@ -6,10 +6,6 @@ const jwt = require('jsonwebtoken');
 // checking for authorization role middleware
 const checkUserRole = (requiredRole='user') => {
     return (req, res, next) => {
-        if (req.method === 'OPTIONS') {
-            next();
-        }
-
         try {
             const token = req.headers.authorization.split(' ')[1];
             if (!token) {
@@ -28,6 +24,8 @@ const checkUserRole = (requiredRole='user') => {
 };
 
 const checkIsAdmin = checkUserRole('admin');
+const checkIsUser = checkUserRole();
+
 // authorization routing
 
 authRouter.post('/register', 
@@ -35,8 +33,8 @@ authRouter.post('/register',
     check('password', 'Password must be greater than 4 and shorter than 10 symbols').isLength({min: 4, max: 10}),
     authController.register);
 authRouter.post('/login', authController.login);
+authRouter.post('/like', authController.likeEvent)
 authRouter.get('/users', checkUserRole(), authController.getUsers);
 authRouter.get('/oneuser', authController.getUser);
-
 
 module.exports = authRouter;

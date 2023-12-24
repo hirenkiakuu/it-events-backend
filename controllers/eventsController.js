@@ -140,7 +140,7 @@ class eventsController {
         ];
 
         const clientEvent = req.body;
-        
+
         if (!requiredFields.every(field => clientEvent[field])) {
             console.log('Didnt pass validation');
             return res.status(400).json({ message: 'Retrieved event is not valid' });
@@ -148,8 +148,7 @@ class eventsController {
 
         console.log('Passed validation');
         next();
-    }
-    
+    }   
 }
 
 module.exports = new eventsController();
