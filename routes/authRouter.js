@@ -33,7 +33,8 @@ authRouter.post('/register',
     check('password', 'Password must be greater than 4 and shorter than 10 symbols').isLength({min: 4, max: 10}),
     authController.register);
 authRouter.post('/login', authController.login);
-authRouter.post('/like', authController.likeEvent)
+authRouter.post('/like', authController.likeEvent);
+authRouter.post('/dislike', authController.dislikeEvent);
 authRouter.get('/users', checkUserRole(), authController.getUsers);
 authRouter.get('/oneuser', authController.getUser);
 
