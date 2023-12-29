@@ -21,6 +21,10 @@ const User = {
     dislikeEvent: (userId, eventId) => {
         const deleteTagsQuery = 'DELETE FROM eventsusers WHERE user_id=? AND event_id=?';
         return db.execute(deleteTagsQuery, [userId, eventId]);
+    },
+    getUserLikedEvents: (userId) => {
+        const getCategoriesQuery = 'SELECT event_id FROM eventsusers WHERE user_id=?';
+        return db.execute(getCategoriesQuery, [userId]);
     }
 }
 
