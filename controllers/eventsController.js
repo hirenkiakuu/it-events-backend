@@ -159,161 +159,87 @@ class eventsController {
 
     async getRecommendedEvents(req, res) {
         try {
-            const getAllEventsQuery = 'SELECT * FROM events';
-            const [allEvents] = await db.execute(getAllEventsQuery);
-
+            // запрос на получение id лайкнутых юзером event`ов из таблицы userevents
             const userId = req.body.user_id;
             const [userLikedEventsIds] = await User.getUserLikedEvents(userId);
             const likedIds = userLikedEventsIds.map(({ event_id }) => event_id);
-    
-            console.log(userLikedEventsIds);
 
-            const selectedEvents = allEvents.filter(event => likedIds.includes(event.event_id));
-            
-            console.log(selectedEvents)
-
-            const placeholders = likedIds.map(() => '?').join(', ');
+            // плейсхолдер для event_id в таблице eventscategories
+            let idPlaceholders = likedIds.map(() => '?').join(', ');
             const query = `
                 SELECT DISTINCT category_id
                 FROM eventscategories
-                WHERE event_id IN (${placeholders});
+                WHERE event_id IN (${idPlaceholders});
             `;
 
-            // Выполнение запроса с массивом id событий
-            let [rows] = await db.execute(query, likedIds);
+            // запрос на получение id тэга в таблице eventscategories
+            let [queriedIds] = await db.execute(query, likedIds);
 
-            console.log(rows);
+            // приведение к массиву, состоящему из id 
+            queriedIds = queriedIds.map(({ category_id }) => category_id);
 
-            rows = rows.map(({ category_id }) => category_id)
+            // пользовательский вектор категорий
+            const inputVector = queriedIds;
+            // пустой вектор
+            const userSparseVector = Array.from({ length: 15 }).fill(0);
 
-            console.log(rows)
-
-            const placeholders2 = rows.map(() => '?').join(', ');
-            const query2 = `
-                SELECT DISTINCT category_name
-                FROM categories
-                WHERE category_id IN (${placeholders2});
-            `;
-            let [userCategories] = await db.execute(query2, rows);
-            userCategories = userCategories.map(({ category_name }) => category_name);
-            console.log(userCategories);
-
-            // const eventsCategories = await db.execute();
-            // const query2 = `
-            //     SELECT DISTINCT category_name
-            //     FROM categories
-            //     WHERE category_id IN (${placeholders2});
-            // `;
-            // let [userCategories] = await db.execute(query2, rows);
-            // userCategories = usersCategories.map(({ category_name }) => category_name);
-            // console.log(usersCategories);
-
-        //     const usersLikedEvents = allEvents.filter(event => {
-        //         ///
-        //     });
-
-        //     const userCategories = ////
-        
-
-        const inputVector = rows;
-        const maxElement = Math.max(...inputVector);
-
-    // Создать новый массив с нулями
-         const sparseVector1 = Array.from({ length: 15 }).fill(0);
-
-// Заполнить новый массив весами из исходного вектора
+            // создание разреженного пользовательского вектора
             for (let i = 0; i < inputVector.length; i++) {
-            const element = inputVector[i];
-            sparseVector1[element - 1] = element;
+                const element = inputVector[i];
+                userSparseVector[element - 1] = element;
             }
+            
+            // запрос на получение ивентов и их категорий из таблицы eventscategories
+            const eventsAndCategoriesQuery = 'SELECT * FROM eventscategories';
+            const [eventsAndCategories] = await db.execute(eventsAndCategoriesQuery);
 
-            console.log(sparseVector1);
+            // упорядочивание и сопоставление категорий своему ивенту
+            const groupedByEventId = eventsAndCategories.reduce((acc, { event_id, category_id }) => {
+                if (!acc[event_id]) {
+                    acc[event_id] = { event_id, categories: [] };
+                }
 
-            const queryx = 'SELECT event_id, category_id FROM eventscategories'
-            const [eventsx] = await db.execute(queryx);
+                acc[event_id].categories.push(category_id);
 
-            console.log(eventsx);
+                return acc;
+            }, {});
 
-        //     const categoriesMatrix = vectorizer.fitTransform(eventsDatabase.map(event => event.categories.join(' ')));
+            // временная бд, хранящая ивенты и их категории
+            // имеет вид [ {event_id: _, event_categories: []} ]
+            const database = Object.values(groupedByEventId);
 
-            // const userVector = vectorizer.transform([userCategories.join(' ')]);
+            // создание разреженных векторов для каждого ивента
+            database.forEach(event => {
+                const sparseVector = Array.from({ length: 15 }).fill(0);
 
-        //     const cosineSimilarities = userVector.cosineSimilarity(categoriesMatrix).data;
+                // за основу берется массив категорий ивента event.categories
+                for (let i = 0; i < event.categories.length; i++) {
+                    const element = event.categories[i];
+                    sparseVector[element - 1] = element;
+                }
 
-        // // Получаем индексы ивентов, отсортированных по убыванию косинусного подобия
-        //     const recommendedEventIndices = cosineSimilarities
-        //     .map((similarity, index) => ({ index, similarity }))
-        //     .sort((a, b) => b.similarity - a.similarity)
-        //     .map(item => item.index);
+                event.categories = sparseVector;
+            })
 
-        // // Возвращаем рекомендации
-        //     const recommendations = recommendedEventIndices.map(index => ({ event_id: eventsDatabase[index].event_id }));
-        //     res.json({ recommendations });
-        const groupedByEventId = eventsx.reduce((acc, { event_id, category_id }) => {
-            if (!acc[event_id]) {
-              acc[event_id] = { event_id, categories: [] };
-            }
-          
-            acc[event_id].categories.push(category_id);
-
-            return acc;
-          }, {});
-          
-          // Преобразование объекта в массив
-          const database = Object.values(groupedByEventId);
-          
-          console.log(database);
-
-        //   var s = similarity( x, y );
-
-          let similarities = [];
-
-          database.forEach(event => {
-            const sparseVector = Array.from({ length: 15 }).fill(0);
-
-// Заполнить новый массив весами из исходного вектора
-            for (let i = 0; i < event.categories.length; i++) {
-            const element = event.categories[i];
-            sparseVector[element - 1] = element;
-            }
-
-            event.categories = sparseVector;
-          })
-
-          console.log(database);
-
-        database.forEach(event => {
-            const sim = similarity(event.categories, sparseVector1);
-            event.sim = sim;
-        });
-
-        console.log(database);
-    // Индексы ивентов, отсортированные по убыванию сходства
-    // const sortedIndexes = similarities
-    //     .map((similarity, index) => ({ index, similarity }))
-    //     .sort((a, b) => b.similarity - a.similarity)
-    //     .map(item => item.index);
-
-    // Возвращаем рекомендации в порядке убывания сходства
-    //     const recommendations = sortedIndexes.map(index => eventsDatabase[index]);
-    //     console.log(recommendations);
-    // res.json({ recommendations });
+            // расчет косинусного подобия вектора каждого ивента с пользовательским вектором
+            // добавляется как поле обьекту event в массиве database
+            database.forEach(event => {
+                const sim = similarity(event.categories, userSparseVector);
+                event.sim = sim;
+            });
         
-      
-      // Фильтрация и сортировка
-      const sortedAndFilteredArray = database
-        .filter(event => event.sim !== 0) // Фильтрация элементов с sim !== 0
-        .sort((a, b) => b.sim - a.sim); // Сортировка по убыванию поля sim
-      
-        console.log(sparseVector1);
-    
-        console.log(sortedAndFilteredArray);
-      
-        const recommendations = sortedAndFilteredArray.map(event => event.event_id);
+            // отсеивание ивентов с 0 подобием и сортировка по убыванию косинусного подобия
+            const sortedAndFilteredDatabase = database
+                .filter(event => event.sim !== 0) // Фильтрация элементов с sim !== 0
+                .sort((a, b) => b.sim - a.sim); // Сортировка по убыванию поля sim
+
+            // формирование массива с id рекомендованных ивентов
+            const recommendations = sortedAndFilteredDatabase.map(event => event.event_id);
             
             res.json({recommendations});
         } catch (err) {
             console.log(err);
+            console.error(err);
             res.status(500).json({ message: 'Internal server error' });
         }
     }
