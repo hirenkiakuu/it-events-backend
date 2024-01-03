@@ -2,29 +2,17 @@ const similarity = require('compute-cosine-similarity');
 const db = require('../db');
 const User = require('../models/User');
 
+function createSparseVector(categoryValues) {
+    const sparseVector = Array.from({ length: 15 }).fill(0);
 
-async function fetchData(likedIds) {
-    const categoriesArr = [];
+    // за основу берется массив категорий ивента event.categories
+    for (let i = 0; i < categoryValues.length; i++) {
+        const element = categoryValues[i];
+        sparseVector[element - 1] = element;
+    }
 
-    // Используем Promise.all для ожидания завершения всех асинхронных операций
-    await Promise.all(likedIds.map(async likedId => {
-        try {
-            const result = await db.execute(query, [likedId]);
-            categoriesArr.push(result);
-        } catch (error) {
-            console.error(error);
-        }
-    }));
-
-    console.log(categoriesArr);
-
-    // Преобразование категорий, если это необходимо
-    const categoryIds = categoriesArr.map(({ category_id }) => category_id);
-    console.log(categoryIds);
-
-    return categoryIds;
+    return sparseVector;
 }
-
 
 class eventsController {
     async getAllEvents(req, res) {
@@ -178,17 +166,9 @@ class eventsController {
             // приведение к массиву, состоящему из id 
             queriedIds = queriedIds.map(({ category_id }) => category_id);
 
-            // пользовательский вектор категорий
-            const inputVector = queriedIds;
-            // пустой вектор
-            const userSparseVector = Array.from({ length: 15 }).fill(0);
-
             // создание разреженного пользовательского вектора
-            for (let i = 0; i < inputVector.length; i++) {
-                const element = inputVector[i];
-                userSparseVector[element - 1] = element;
-            }
-            
+            const userSparseVector = createSparseVector(queriedIds);
+
             // запрос на получение ивентов и их категорий из таблицы eventscategories
             const eventsAndCategoriesQuery = 'SELECT * FROM eventscategories';
             const [eventsAndCategories] = await db.execute(eventsAndCategoriesQuery);
@@ -210,15 +190,8 @@ class eventsController {
 
             // создание разреженных векторов для каждого ивента
             database.forEach(event => {
-                const sparseVector = Array.from({ length: 15 }).fill(0);
-
                 // за основу берется массив категорий ивента event.categories
-                for (let i = 0; i < event.categories.length; i++) {
-                    const element = event.categories[i];
-                    sparseVector[element - 1] = element;
-                }
-
-                event.categories = sparseVector;
+                event.categories = createSparseVector(event.categories);
             })
 
             // расчет косинусного подобия вектора каждого ивента с пользовательским вектором
@@ -229,12 +202,10 @@ class eventsController {
             });
         
             // отсеивание ивентов с 0 подобием и сортировка по убыванию косинусного подобия
-            const sortedAndFilteredDatabase = database
+            const recommendations = database
                 .filter(event => event.sim !== 0) // Фильтрация элементов с sim !== 0
-                .sort((a, b) => b.sim - a.sim); // Сортировка по убыванию поля sim
-
-            // формирование массива с id рекомендованных ивентов
-            const recommendations = sortedAndFilteredDatabase.map(event => event.event_id);
+                .sort((a, b) => b.sim - a.sim) // Сортировка по убыванию поля sim
+                .map(event => event.event_id) // формирование массива с id рекомендованных ивентов
             
             res.json({recommendations});
         } catch (err) {
