@@ -19,7 +19,7 @@ const checkUserRole = (requiredRole='user') => {
             return res.status(403).json({ message: 'User is not authorized' });
         }
 
-        // next();
+        next();
     };
 };
 
@@ -35,7 +35,7 @@ authRouter.post('/register',
 authRouter.post('/login', authController.login);
 authRouter.post('/like', authController.likeEvent);
 authRouter.post('/dislike', authController.dislikeEvent);
-authRouter.get('/users', checkUserRole(), authController.getUsers);
+authRouter.get('/users', authController.getUsers);
 authRouter.get('/oneuser', authController.getUser);
 
 module.exports = authRouter;

@@ -121,7 +121,7 @@ class eventsController {
 
             // const [queryResult] = await db.execute(query, []);
 
-            res.status(201).json({ message: 'Event added succesfully' });
+            res.status(201).json({ message: 'Event created succesfully' });
         } catch(err) {
             console.error('Error adding event', err);
             res.status(500).json({ message: 'Failed to add event' });
