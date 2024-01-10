@@ -36,6 +36,6 @@ authRouter.post('/login', authController.login);
 authRouter.post('/like', authController.likeEvent);
 authRouter.post('/dislike', authController.dislikeEvent);
 authRouter.get('/users', authController.getUsers);
-authRouter.get('/oneuser', authController.getUser);
+authRouter.get('/user', authController.getUser);
 
 module.exports = authRouter;

@@ -9,7 +9,7 @@ const generateAccessToken = (id, role) => {
         role
     };
 
-    return jwt.sign(payload, process.env.MYSECRET_KEY, {expiresIn: '24h'});
+    return jwt.sign(payload, process.env.MYSECRET_KEY, {expiresIn: '7d'});
 }
 
 class authController {
